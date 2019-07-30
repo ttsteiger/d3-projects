@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang = "en">
+   <head>
+      <meta charset = "UTF-8">
+      <script type = "text/javascript" src = "https://d3js.org/d3.v4.min.js"></script>
+      <style>
+         body { 
+            font: 12px Arial;
+         }
+
+         .line {
+            fill: none;
+            stroke: steelblue;
+            stroke-width: 2px;
+         }
+
+         .grid line {
+            stroke: grey;
+            stroke-opacity: 0.2;
+            shape-rendering: crispEdges
+         }
+         
+         .grid path {
+            stroke-width: 0;
+         }
+
+         .area {
+            fill: lightsteelblue;
+         }
+
+         .tooltip-group line {
+            stroke: grey;
+            stroke-dasharray: 3,3;
+            opacity: 0.8;
+         }
+
+         .label-shade {
+            stroke: white;
+            stroke-width: 3.5px;
+            opacity: 0.8;
+         }
+
+      </style>
+   </head>
+   <body>
+      <h1>Token Supply Curve</h1>
+      <script>
+      // line & graph parameters
+      var initial_reserve = 0.1, // %
+         total_supply = 1000000,
+         initial_supply = initial_reserve * total_supply,
+         slope = 0.1,
+         y_intercept = slope * -1 * initial_reserve * total_supply,
+         market_cap = 0,
+         current_supply = 500000,
+         current_price = current_supply * slope + y_intercept,
+         min_mint = 1000;
+
+      // set the dimensions and margins of the graph
+      var margin = {top: 50, right: 150, bottom: 70, left: 70},
+         width = 960 - margin.left - margin.right,
+         height = 500 - margin.top - margin.bottom;
+
+      // aggregate line data points in array of objects
+      var data = d3.range(initial_supply, total_supply + 1, min_mint).map(
+         function(d) { return {
+            "x": d, 
+            "y": d * slope + y_intercept} });
+
+      // data array to draw area below curve
+      var area_data = d3.range(initial_supply, current_supply + 1, min_mint).map(
+         function(d) { return { 
+            "x": d, 
+            "y": d * slope + y_intercept} });
+
+      // helper function to calculate optimum y-tick settings
+      function getSmartTicks(max_y) {
+            
+         //base step between nearby two ticks
+         var step = Math.pow(10, max_y.toString().length - 1);
+
+         //modify steps either: 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000...
+         if (max_y / step < 2) {
+            step = step / 5;
+         } else if (max_y / step < 5) {
+            step = step / 2;
+         }
+
+         //add one more step if the last tick value is the same as the max value
+         //if you don't want to add, remove "+1"
+         var slices_count = Math.ceil((max_y + 1) / step);
+
+         return {
+            end_point: slices_count * step,
+            count: Math.min(10, slices_count) //show max 10 ticks
+         };
+      }
+
+      // data.map(a => a.y)) create array of y-values
+      var y_tick_settings = getSmartTicks(d3.max(data.map(a => a.y)));
+
+      // set the ranges
+      var xscale = d3.scaleLinear()
+         .domain([0, total_supply])
+         .range([0, width]);
+         
+      var yscale = d3.scaleLinear()
+         .domain([0, y_tick_settings.end_point])
+         .range([height, 0]);
+
+      // line generator
+      var line = d3.line()
+         .x(function(d) { return xscale(d.x); })
+         .y(function(d) { return yscale(d.y); })
+         .curve(d3.curveMonotoneX); // apply smoothing to the line
+
+      // grid line functions
+      function makexGridlines() {
+         return d3.axisBottom(xscale)
+      };
+
+      function makeyGridlines() {
+         return d3.axisLeft(yscale)
+      };
+
+      // area generator (area = collateral)
+      var area = d3.area()
+         .x(function(d) { return xscale(d.x); })
+         .y0(height)
+         .y1(function(d) { return yscale(d.y); });
+
+      // append the svg obgect to the body of the page
+      var svg = d3.select("body").append("svg")
+      .attr("width", width + margin.left + margin.right)
+      .attr("height", height + margin.top + margin.bottom)
+      .append("g")
+         .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+      // add gridlines to graph
+       svg.append("g")
+         .attr("class", "grid")
+         .attr("transform", "translate(0," + height + ")")
+         .style("stroke-dasharray", ("3,3"))
+         .call(makexGridlines()
+            .tickSize(-height)
+            .tickFormat("")
+         );
+  
+      svg.append("g")
+         .attr("class", "grid")
+         .style("stroke-dasharray", ("3,3"))
+         .call(makeyGridlines()
+            .ticks([y_tick_settings.count])
+            .tickSize(-width)
+            .tickFormat("")
+         );
+
+      // add x- and y-axis
+      svg.append("g")
+         .attr("transform", "translate(0, " + height + ")")
+         .call(d3.axisBottom().scale(xscale));
+
+      svg.append("g")
+         .call(d3.axisLeft().scale(yscale).ticks(y_tick_settings.count));
+
+      // axis titles
+      svg.append("text")
+         .attr("text-anchor", "middle")
+         .attr("transform", "translate(" + -1*(margin.left/3 * 2) + "," +(height/2) + ")rotate(-90)")
+         .text("Price [$]");
+
+     svg.append("text")
+         .attr("text-anchor", "middle")
+         .attr("transform", "translate(" + (width/2) + "," + (height + margin.bottom/3 * 2) + ")")
+         .text("Supply");
+
+      // fill area below line to indicate current market cap
+      svg.append("path")
+         .datum(area_data)
+         .attr("class", "area")
+         .attr("d", area);
+
+      // add line to grah
+      svg.append("path")
+         .datum(data)
+         .attr("class", "line")
+         .attr("d", line);
+
+      // append group holding tooltip elements
+      var tooltipGroup = svg.append("g")
+         .attr("class", "tooltip-group")
+         .style("display", "none");
+
+      // append line to show x-coordinate of tooltip
+      tooltipGroup.append("line")
+         .attr("class", "x-line")
+         .attr("y1", 0)
+         .attr("y2", height);
+
+      // append line to show y-coordinate of tooltip
+      tooltipGroup.append("line")
+         .attr("class", "y-line")
+         .attr("x1", width)
+         .attr("x2", width);
+
+      // text to display token price at mouse location
+      tooltipGroup.append("text")   // white shade to make text legible when over line
+         .attr("class", "label-shade y-label-shade")
+         .attr("dx", 8)
+         .attr("dy", "-.3em");
+      tooltipGroup.append("text") // actual text
+         .attr("class", "label-text y-label-text")
+         .attr("dx", 8)
+         .attr("dy", "-.3em");
+
+       // text to display date at mouse location
+      tooltipGroup.append("text")
+         .attr("class", "label-shade x-label-shade")
+         .attr("dx", 8)
+         .attr("dy", "1em");
+      tooltipGroup.append("text")
+         .attr("class", "label-text x-label-text")
+         .attr("dx", 8)
+         .attr("dy", "1em");
+
+      // add circle around data point closest to mouse pointer
+      tooltipGroup.append("circle")
+         .attr("class", "tooltip-circle")
+         .style("fill", "none")
+         .style("stroke", "blue")
+         .attr("r", 4);
+
+      // format displayed numbers for human consumption
+      var formatNumber = d3.format(",.0f")
+
+      // function to select data point based on mouse position
+      function mouseMove() {
+         var x0 = xscale.invert(d3.mouse(this)[0]), // x-coordinate of mouse pointer
+            i = d3.bisector(function(d) { return d.x; }).left(data, x0, 1);
+            d0 = data[i - 1],
+            d1 = data[i],
+            d = x0 - d0.x > d1.x - x0 ? d1 : d0;
+
+         // move x-line to data point closest to mouse location
+         tooltipGroup.select("line.x-line")
+            .attr("transform",
+                  "translate(" + xscale(d.x) + "," + yscale(d.y) + ")")
+            .attr("y2", height - yscale(d.y));
+
+         // move y-line to data point closest to mouse location
+         tooltipGroup.select("line.y-line")
+            .attr("transform",
+                  "translate(" + -1*width + "," + yscale(d.y) + ")")
+            .attr("x2", width + xscale(d.x));
+
+         // move tooltip circle to data point closest to mouse location
+         tooltipGroup.select("circle.tooltip-circle")
+            .attr("transform",
+                  "translate(" + xscale(d.x) + "," + yscale(d.y) + ")");
+
+         // move token price text to data point closest to mouse location
+         tooltipGroup.select("text.y-label-shade")
+            .attr("transform",
+                  "translate(" + xscale(d.x) + "," + yscale(d.y) + ")")
+            .text("Price:\t\t\t " + " $" + formatNumber(d.y));
+
+         tooltipGroup.select("text.y-label-text")
+            .attr("transform", 
+                  "translate(" + xscale(d.x) + "," + yscale(d.y) + ")")
+            .text("Price:\t\t\t " + " $" + formatNumber(d.y));
+
+         // move token supply text to data point closest to mouse location
+         tooltipGroup.select("text.x-label-shade")
+            .attr("transform",
+                  "translate(" + xscale(d.x) + "," + yscale(d.y) + ")")
+            .text("Supply: " + formatNumber(d.x));
+
+         tooltipGroup.select("text.x-label-text")
+            .attr("transform", 
+                  "translate(" + xscale(d.x) + "," + yscale(d.y) + ")")
+            .text("Supply: " + formatNumber(d.x));
+      }
+
+      // rectangle to catch mouse movement
+      svg.append("rect")
+         .attr("width", width)
+         .attr("height", height)
+         .style("fill", "none")
+         .style("pointer-events", "all")
+         .on("mouseover", function() { tooltipGroup.style("display", null); })
+         .on("mouseout", function() { tooltipGroup.style("display", "none"); })
+         .on("mousemove", mouseMove);
+      </script>
+   </body>
+</html>

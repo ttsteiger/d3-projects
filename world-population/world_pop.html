@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang = "en">
+   <head>
+	  <meta charset="UTF-8">
+	  <script type="text/javascript" src="https://d3js.org/d3.v5.min.js"></script>
+	  <script type="text/javascript" src="labeler.js"></script>
+	  <style>
+	  	.line {
+		  fill: none;
+		  stroke: none;
+		}
+
+		.area {
+	  		fill: black;
+	  	}
+	  </style>
+	</head>
+
+	<body>
+		<h1>World Population</h1>
+
+		<select id="selectIncomeButton"></select>
+
+		<script type="text/javascript">
+
+			// country metadata
+			var metaData = {"country": {"region": "", "income": "", "lastPopulation": ""},}
+
+			// svg sizing
+			var margin = {top: 20, right: 100, bottom: 30, left: 50},
+				width = 960 - margin.left - margin.right,
+				height = 960 - margin.top - margin.bottom;
+
+			// label optimizer arrays
+			var labelArr = [],
+				anchorArr = [];
+
+			// formating functions
+			var parseDate = d3.timeParse("%Y");
+
+			// helper functions
+			function findMinMax(arr, key) {
+				// find minimum and maximum value in array
+				let min = arr[0][key], max = arr[0][key];
+
+				for (let i = 1, len=arr.length; i < len; i++) {
+					let v = arr[i][key];
+					min = (v < min) ? v : min;
+					max = (v > max) ? v : max;
+				}
+				return [min, max];
+			}
+
+			function convertString(string) {
+				// convert string to be usable as ID/class
+				return string.replace(/[^a-zA-Z]/g, "");
+			}
+
+			// append the svg obgect to the body of the page
+			var svg = d3.select("body").append("svg")
+				.attr("width", width + margin.left + margin.right)
+				.attr("height", height + margin.top + margin.bottom)
+				.append("g")
+				.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+			// import data and populate svg
+			Promise.all([
+				d3.csv("pop_total.csv"),
+				d3.csv("metadata.csv"),
+			]).then(function(files) {
+
+				// assign files
+				var data = files[0],
+					metaData = files[1];
+
+				// get column headers
+				var countries = d3.keys(data[0]);
+				countries.shift();
+
+				// remove all entries with _ (denoting upper/lower limits)
+				for (var i = countries.length - 1; i >= 0; i--) {
+						if (countries[i].indexOf("_") > -1)  { 
+							countries.splice(i, 1);  
+						} 
+					};
+
+				// format data
+				data.forEach(function(d) {
+					d['Year'] = parseDate(d['Year']);
+
+					countries.forEach(function(c) {
+						d[c] = parseFloat(d[c])
+					})
+				});
+
+				// get min/max percentage changes
+				var minMaxChanges = [];
+
+				countries.forEach(function(c) {
+					var lims = findMinMax(data, c)
+					minMaxChanges.push(lims)
+				})
+
+				var maxChange = Math.max(...[].concat(...minMaxChanges));
+				var minChange = Math.min(...[].concat(...minMaxChanges));
+
+				// get unique metadata values
+				var incomeGroups = metaData.map(x => x.IncomeGroup)
+					.filter((value, index, self) => self.indexOf(value) === index);
+
+				var regions = metaData.map(x => x.Region)
+					.filter((value, index, self) => self.indexOf(value) === index).sort();
+
+				// add options to income dropdown
+				d3.select("#selectIncomeButton")
+					.selectAll('incomeOptions')
+					.data(incomeGroups)
+					.enter()
+    					.append('option')
+      					.text(function (d) { return d; }) // text shon in dropdown
+      					.attr("value", function (d) { return d; }) // value returned by selection
+
+				// set data ranges and scales
+		 		var xscale = d3.scaleTime()
+		 			.domain(d3.extent(data, function(d) { return d['Year']; })) 
+					.range([0, width]);
+
+				var yscale = d3.scaleLinear()
+					.domain([minChange, maxChange])
+					.range([height, 0]);
+				
+				for (var i = 0; i < countries.length; i++) {
+					
+					// replace special characters in country name for id usage
+					var countryID = convertString(countries[i]);
+
+					// find income group & region
+					var incomeGroup = convertString(metaData.find(x => x.Country === countries[i]).IncomeGroup),
+						region = convertString(metaData.find(x => x.Country === countries[i]).Region);
+
+					// group that holds country components
+					var countryGroup = svg.append("g")
+						.attr("id", countryID);
+
+					// plot lower and upper limit line for each country
+					var lineMid = d3.line()
+						.x(function(d) { return xscale(d['Year']); })
+						.y(function(d) { return yscale(d[countries[i]]); });
+
+					var lineLow = d3.line()
+						.x(function(d) { return xscale(d['Year']); })
+						.y(function(d) { return yscale(d[countries[i] + '_low']); });
+
+					var lineUp = d3.line()
+						.x(function(d) { return xscale(d['Year']); })
+						.y(function(d) { return yscale(d[countries[i] + '_up']); });
+
+					countryGroup.append("path")
+						.datum(data)
+						.attr("class", "line")
+						.attr("id", countryID + "_mid")
+						.attr("d", lineMid);
+
+					countryGroup.append("path")
+						.datum(data)
+						.attr("class", "line")
+						.attr("id", countryID + "_low")
+						.attr("d", lineLow);
+
+					countryGroup.append("path")
+						.datum(data)
+						.attr("class", "line")
+						.attr("id", countryID + "_up")
+						.attr("d", lineUp);
+
+					// add label
+					var labelText = countries[i];
+					var xPosLabel = d3.select("#" + countryID + "_mid").node().getBBox().width + 10;
+					var lineLen = d3.select("#" + countryID + "_mid").node().getTotalLength();
+					var yPosLabel = d3.select("#" + countryID + "_mid").node().getPointAtLength(lineLen).y;
+
+					var label= countryGroup.append("text")
+						.attr("class", "label " + incomeGroup)
+						.attr("id", countryID + "_label")
+						.attr("font-size", "15px")
+						.attr("alignment-baseline", "middle")
+						.attr("x", xPosLabel)
+						.attr("y", yPosLabel)
+						.attr("opacity", 1.0)
+						.text(labelText);
+
+					// fill area between lines
+					var area = d3.area()
+						.x(function(d) { return xscale(d['Year']); })
+						.y0(function(d) { return yscale(d[countries[i] + '_low']); })
+						.y1(function(d) { return yscale(d[countries[i] + '_up']); });
+
+					countryGroup.append("path")
+						.datum(data)
+						.attr("class", "area " + incomeGroup)
+						.attr("d", area)
+						.attr("id", countryID + "_area")
+						.attr("opacity", 0.2)
+						.on("mouseover", 
+							function() {
+								// only act on mouseover if line is not affected by selector
+								if (d3.select(this).classed("selected") === false) {
+									// highlight area on hover
+									d3.select(this)
+										.transition().duration(200)
+											.attr("opacity", 1.0);
+
+									// show line label
+									var labelID = d3.select(this).attr("id").split("_")[0] + "_label";
+
+									d3.select("#" + labelID)
+										.transition().duration(200)
+								 			.attr("opacity", 1.0);
+								}
+							})
+						.on("mouseout",
+							function() {
+								// only act on mouseover if line is not affected by selector
+								if (d3.select(this).classed("selected") === false) {
+									// reduce line opacity
+									d3.select(this)
+										.transition().duration(200)
+											.attr("opacity", 0.2);
+
+									// hide line label
+									var labelID = d3.select(this).attr("id").split("_")[0] + "_label";
+									d3.select("#" + labelID)
+										.transition().duration(200)
+											.attr("opacity", 0.0);
+								}
+						});
+					};
+
+				// add x- and y-axis
+				svg.append("g")
+					.attr("transform", "translate(0, " + height + ")")
+					.call(d3.axisBottom()
+						.scale(xscale))
+
+				 svg.append("g")
+					.call(d3.axisLeft()
+						.scale(yscale))
+
+				// highlight selected group
+				function highlightGroup(selectedGroup) {
+
+					// unselect all countries
+					d3.selectAll(".area")
+						.classed("selected", false)
+						.transition().duration(200)
+							.attr("opacity", 0.2);
+					d3.selectAll(".label")
+						.transition().duration(200)
+							.attr("opacity", 0.0);
+
+					// highlight selected group
+					d3.selectAll(".area").filter("." + selectedGroup)
+						.classed("selected", true)
+						.transition().duration(200)
+							.attr("opacity", 1.0);
+					d3.selectAll(".label").filter("." + selectedGroup)
+						.classed("selected", true)
+						.transition().duration(200)
+							.attr("opacity", 1.0);
+				}
+
+				// When the button is changed, run the updateChart function
+				d3.select("#selectIncomeButton")
+					.on("change", function(d) {
+						// get selected value from dropdown
+						var selectedGroup = convertString(d3.select(this).property("value"));
+						
+						// highlight based on selection
+						highlightGroup(selectedGroup);
+					});
+
+			});
+
+
+		</script>
+
+
+	</body>
