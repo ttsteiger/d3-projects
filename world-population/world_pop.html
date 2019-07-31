@@ -243,72 +243,8 @@
 						.attr("d", area)
 						.attr("id", countryID + "_area")
 						.attr("opacity", 0.2)
-						.on("mouseover", 
-							function() {
-								// only act on mouseover if line is not affected by selector
-								if (d3.select(this).classed("selected") === false) {
-									// highlight area on hover
-									d3.select(this)
-										.transition().duration(200)
-											.attr("opacity", 0.7);
-
-									// hide labels from income selection
-									d3.selectAll(".label")
-										.transition().duration(200)
-											.attr("fill", "none");
-
-									// hide leader lines
-									d3.selectAll(".leader-line")
-										.transition().duration(200)
-											.attr("fill", "none")
-											.attr("stroke", "none");
-
-									// add line label
-									var country = d3.select(this.parentNode).attr("data-country"),
-										countryID = convertString(country),
-										xPosLabel = d3.select("#" + countryID + "_mid").node().getBBox().width + labelDis,
-										lineLen = d3.select("#" + countryID + "_mid").node().getTotalLength(),
-										yPosLabel = d3.select("#" + countryID + "_mid").node().getPointAtLength(lineLen).y;
-
-									var label = d3.select(this.parentNode)
-										.append("text")
-										.attr("class", "label")
-										.attr("id", countryID + "_label")
-										.text(country)
-										.attr("x", xPosLabel)
-										.attr("y", yPosLabel)
-										.attr("alignment-baseline", "middle")
-									
-									label.transition().duration(200)
-										.attr("fill", "black");
-								}
-							})
-						.on("mouseout",
-							function() {
-								// only act on mouseover if line is not affected by selector
-								if (d3.select(this).classed("selected") === false) {
-									// reduce line opacity
-									d3.select(this)
-										.transition().duration(200)
-											.attr("opacity", 0.2);
-
-									// remove line label
-									var labelID = d3.select(this).attr("id").split("_")[0] + "_label";
-									d3.selectAll("#" + labelID)
-											.remove();
-
-									// show hidden labels again
-									d3.selectAll(".label")
-										.transition().duration(200)
-										.attr("fill", "black");
-
-									// show hidden leader lines again
-									d3.selectAll(".leader-line")
-										.transition().duration(200)
-											.attr("fill", "black")
-											.attr("stroke", "black");
-								}
-						});
+						.on("mouseover", mouseOver)
+						.on("mouseout", mouseOut);
 					};
 
 				// add x- and y-axis
@@ -430,6 +366,73 @@
 						// highlight based on selection
 						highlightGroup(selectedGroup);
 					});
+
+				// hover functions
+				function mouseOver(d) {
+					// only act on mouseover if line is not affected by selector
+					if (d3.select(this).classed("selected") === false) {
+						// highlight area on hover
+						d3.select(this)
+							.transition().duration(200)
+								.attr("opacity", 0.7);
+
+						// hide labels from income selection
+						d3.selectAll(".label")
+							.transition().duration(200)
+								.attr("fill", "none");
+
+						// hide leader lines
+						d3.selectAll(".leader-line")
+							.transition().duration(200)
+								.attr("fill", "none")
+								.attr("stroke", "none");
+
+						// add line label
+						var country = d3.select(this.parentNode).attr("data-country"),
+							countryID = convertString(country),
+							xPosLabel = d3.select("#" + countryID + "_mid").node().getBBox().width + labelDis,
+							lineLen = d3.select("#" + countryID + "_mid").node().getTotalLength(),
+							yPosLabel = d3.select("#" + countryID + "_mid").node().getPointAtLength(lineLen).y;
+
+						var label = d3.select(this.parentNode)
+							.append("text")
+							.attr("class", "label")
+							.attr("id", countryID + "_label")
+							.text(country)
+							.attr("x", xPosLabel)
+							.attr("y", yPosLabel)
+							.attr("alignment-baseline", "middle")
+									
+						label.transition().duration(200)
+							.attr("fill", "black");
+					}
+				}
+
+				function mouseOut(d) {
+					// only act on mouseover if line is not affected by selector
+					if (d3.select(this).classed("selected") === false) {
+						// reduce line opacity
+						d3.select(this)
+							.transition().duration(200)
+								.attr("opacity", 0.2);
+
+						// remove line label
+						var labelID = d3.select(this).attr("id").split("_")[0] + "_label";
+							d3.selectAll("#" + labelID)
+								.remove();
+
+						// show hidden labels again
+						d3.selectAll(".label")
+							.transition().duration(200)
+								.attr("fill", "black");
+
+						// show hidden leader lines again
+						d3.selectAll(".leader-line")
+							.transition().duration(200)
+								.attr("fill", "black")
+								.attr("stroke", "black");
+					}
+				}
 			});
 
 
