@@ -4,8 +4,15 @@
 
 .column {
   float: left;
-  width: 40%;
   font-family: 'Open Sans', sans-serif;
+}
+
+.left {
+  width: 55%;
+}
+
+.right {
+  width: 45%;
 }
 
 /* Clear floats after the columns */

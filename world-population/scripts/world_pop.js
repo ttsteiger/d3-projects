@@ -26,8 +26,8 @@ function convertString(string) {
 var metaData = {"country": {"region": "", "income": "", "lastPopulation": ""},}
 
 // svg sizing
-var margin = {top: 30, right: 200, bottom: 30, left: 50},
-	width = 880 - margin.left - margin.right,
+var margin = {top: 30, right: 250, bottom: 30, left: 50},
+	width = 1080 - margin.left - margin.right,
 	height = 940 - margin.top - margin.bottom;
 
 // styling
@@ -54,7 +54,7 @@ var legendWidth = 250,
 	legendHeight = 100;
 
 // label displacement
-var labelDis = 20; // distance between line end and label			
+var labelDis = 40; // distance between line end and label			
 
 // append the svg obgect to the body of the page
 var svg = d3.select(".graph-container").append("svg")
