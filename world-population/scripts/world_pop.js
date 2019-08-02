@@ -370,7 +370,7 @@ Promise.all([
 			});
 
 		// draw labels
-		labels = d3.selectAll(".label")
+		var labels = d3.selectAll(".label")
 			.data(labelArr)
 			.attr('text-anchor', 'start')
 			.text(function(d) { return d.name; })
