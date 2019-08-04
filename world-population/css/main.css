@@ -5,10 +5,11 @@
 .column {
   float: left;
   font-family: 'Open Sans', sans-serif;
+  margin-left: 20px;
 }
 
 .left {
-  width: 55%;
+  width: 48%;
 }
 
 .right {
@@ -21,7 +22,6 @@
   display: table;
   clear: both;
 }
-
 
 .line {
 	fill: none;
@@ -56,6 +56,10 @@
 .axis text{
 	fill: #808080;
 	opacity: 1.0;
+}
+
+.axis .tick line{
+  visibility:hidden;
 }
 
 .grid line {
@@ -109,7 +113,7 @@
 	outline: none;
 	-webkit-appearance: none;
 	display: block;
-	padding: 0.3em 0em 0.3em 0.8em;
+	padding: 0.3em 4.0em 0.3em 0.8em;
 	margin: 0;
 
 	transition: border-color 0.2s;

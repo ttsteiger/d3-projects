@@ -26,9 +26,9 @@ function convertString(string) {
 var metaData = {"country": {"region": "", "income": "", "lastPopulation": ""},}
 
 // svg sizing
-var margin = {top: 30, right: 250, bottom: 30, left: 50},
+var margin = {top: 30, right: 250, bottom: 30, left: 35},
 	width = 1080 - margin.left - margin.right,
-	height = 940 - margin.top - margin.bottom;
+	height = 960 - margin.top - margin.bottom;
 
 // styling
 var areaFill = "#1DABE6",
@@ -45,10 +45,10 @@ var yTickLabels = ["-10%", "0%", "+10%", "+20%", "+30%", "+40%", "+50%",
 
 // legend data
 var legendData = [
-	{label: "1B", heightPerc: 0.07212951575849595},
-	{label: "500M", heightPerc: 0.036064757879247976},
-	{label: "10M", heightPerc: 0.0007212951575849597}
-]
+	{label: "1B", heightPerc: 0.07277341022216513},
+	{label: "500M", heightPerc: 0.037541859894346594},
+	{label: "10M", heightPerc: 0.003014940573084428}
+];
 
 var legendWidth = 250,
 	legendHeight = 100;
@@ -110,7 +110,7 @@ Promise.all([
 		.range([0, width]);
 
 	var yscale = d3.scaleLinear()
-		.domain([minChange, 0.9])
+		.domain([-0.15, 0.9])
 		.range([height, 0]);
 	
 	// add gridlines to graph
@@ -183,7 +183,7 @@ Promise.all([
 		.enter()
 			.append("option")
 			.attr("class", "income-option")
-				.text(function (d) { return d; }) // text shon in dropdown
+				.text(function (d) { return d.replace(' income',''); }) // text shown in dropdown
 				.attr("value", function (d) { return d; }) // value returned by selection
 
 	for (var i = 0; i < countries.length; i++) {
@@ -304,11 +304,13 @@ Promise.all([
 		.enter()
 		.append("g");
 
+	var rectWidth = (legendWidth - 2*10 - 2*5)/3;
+
 	legendRects.append("rect")
 			.attr("class", "legend-rect")
-			.attr("x", function(d, i) {return i * ((legendWidth - 2*10)/3 + 10)})
+			.attr("x", function(d, i) {return 10 + i* (rectWidth + 5)})
 			.attr("y", function(d, i) {return legendHeight/3 + (legendData[0].heightPx - d.heightPx)/2})
-			.attr("width", (legendWidth - 2*10)/3)
+			.attr("width", rectWidth)
 			.attr("height", function(d) { return d.heightPx; });
 
 	// add labels to rects
